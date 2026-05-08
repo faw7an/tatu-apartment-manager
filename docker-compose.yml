@@ -1,0 +1,71 @@
+services:
+  api:
+    build: .
+    container_name: tatu-api
+    restart: always
+    env_file: .env
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - tatu-net
+
+  db:
+    image: docker.io/postgres:16-alpine
+    container_name: tatu-db
+    restart: always
+    env_file: .env
+    volumes: 
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tatu"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tatu-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: tatu-nginx
+    restart: always
+    ports:
+      80:80
+      443:443
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./www:/var/www/html:ro
+    depends_on:
+      - api
+    networks:
+      - tatu-net
+    
+          
+  # ─── Certbot (SSL) ────────────────────────────────────────────────────────
+  # This container is NOT always running
+  # Run once to get your certificate:
+  #   docker compose run --rm certbot certonly --webroot \
+  #     --webroot-path=/var/www/certbot \
+  #     --email you@email.com \
+  #     --agree-tos \
+  #     -d yourdomain.com
+  # Then reload nginx: docker compose exec nginx nginx -s reload
+  certbot:
+    image: docker.io/certbot/certbot
+    container_name: tatu-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    networks:
+      - tatu-net
+
+volumes:
+  pgdata:
+    
+networks:
+  tatu-net:
+    driver: bridge
