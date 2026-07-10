@@ -14,11 +14,11 @@ datasource db {
 
 // Enums 
 enum Role {
-  LANDLORD 
+  LANDLORD
   TENANT
 }
 
-enum BillStatus { 
+enum BillStatus {
   UNPAID
   PAID
   OVERDUE
@@ -32,35 +32,287 @@ enum NoticeType {
   ANNOUNCEMENT
 }
 
-// more enums
+enum IssueCategory {
+  WIFI
+  WATER
+  POWER
+  DOOR_LOCK
+  PLUMBING
+  OTHER
+}
 
+enum IssuePriority {
+  LOW
+  MEDIUM
+  HIGH
+}
 
+enum IssueStatus {
+  OPEN
+  RESOLVED
+  IN_PROGRESS
+}
 
-// // tbles
-// model Profile {
-//   id  String @id @default(uuid())
-//   fullName String   
-//   email String @unique
-//   phone String
-//   passwordHash String
-//   role Role
-//   apartmentId String?
-//   roomId String? @unique
-//   oneSignalPlayerId String? 
+enum PaymentStatus {
+  PENDING
+  FAILED
+  SUCCESS
+}
 
-//   // relations
-//   apartment Apartment? @relation("ApartmentProfile",fields: [apartmentId],references: [id])
-//   room Room? @relation("RoomTenant",fields: [roomId] , references: [id])
-//   bills Bill[]
-//   receipts Receipt[]
-//   issuesRaised Issue[]
-//   noticeRead NoticeRead[]
-//   notifications Notification[]
-//   refreshTokens RefreshTokens[]
+enum ChargeType {
+  FIXED
+  RATE_BASED
+}
 
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
+// tbles
+model Users {
+  id                String  @id @default(uuid())
+  fullName          String
+  email             String  @unique
+  phone             String
+  passwordHash      String
+  role              Role
+  apartmentId       String?
+  roomId            String? @unique
+  oneSignalPlayerId String?
 
-// }
+  // relations
+  apartment     Apartment?     @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  room          Rooms?          @relation("RoomTenant", fields: [roomId], references: [id])
+  bills         Bills[]
+  receipts      Receipts[]
+  issuesRaised  Issues[]
+  noticeRead    NoticeRead[]
+  notifications Notifications[]
+  refreshTokens RefreshTokens[]
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
+model RefreshTokens {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String @unique
+
+  user      Users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Apartment {
+  id                   String  @id @default(uuid())
+  name                 String
+  address              String
+  gracePeriod          Int
+  // these are toggles for notifications on landlord
+  alertSubscriptionDue Boolean @default(true)
+  alertLeaseEnd        Boolean @default(true)
+  alertOverdue         Boolean @default(true)
+
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  users                  Users[]
+  apartmentSubscriptions ApartmentSubscriptions[]
+  expenses               Expenses[]
+  rooms                  Rooms[]
+  utilityCharges         UtilityCharges[]
+  notices                Notices[]
+}
+
+model ApartmentSubscriptions {
+  id              String   @id @default(uuid())
+  apartmentId     String
+  name            String
+  amount          Float
+  renewalDate     DateTime
+  alertDaysBefore Int
+  isActive        Boolean @default(true)
+
+  // relations
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  expenses  Expenses[]
+}
+
+model Expenses {
+  id             String   @id @default(uuid())
+  apartmentId    String
+  category       String
+  description    String?
+  amount         Float
+  date           DateTime
+  subscriptionId String?
+
+  apartment    Apartment               @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  apartmentSub ApartmentSubscriptions? @relation(fields: [subscriptionId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Rooms {
+  id          String    @id @default(uuid())
+  apartmentId String
+  roomNumber  String
+  floor       String
+  rentAmount  Float
+  isOccupied  Boolean   @default(false)
+  leaseStart  DateTime?
+  leaseEnd    DateTime?
+  rentDueDate Int?
+
+  tenant    Users?    @relation("RoomTenant")
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  bills     Bills[]
+  issues Issues[]
+
+  @@unique([roomNumber, apartmentId])
+}
+
+model Bills {
+  id         String     @id @default(uuid())
+  roomId     String
+  tenantId   String
+  month      String
+  rentAmount Float
+  dueDate    DateTime
+  status     BillStatus @default(UNPAID)
+  paidAt     DateTime?
+  mpesaCode  String?
+
+  // relations
+  room              Rooms      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  tenant            Users      @relation(fields: [tenantId], references: [id])
+  receipt           Receipts? // created after successful payment
+  mpesaTransactions MpesaTxns[]
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  billLineItems BillLineItems[]
+
+  @@unique([tenantId, month])
+}
+
+model BillLineItems {
+  id         String     @id @default(uuid())
+  billId     String
+  name       String
+  chargeType ChargeType
+  units      Float?
+  rate       Float?
+  amount     Float
+
+  bill Bills @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model UtilityCharges {
+  id          String     @id @default(uuid())
+  apartmentId String
+  name        String
+  chargeType  ChargeType
+  rate        Float?
+  amount      Float?
+  isActive    Boolean @default(true)
+
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model MpesaTxns {
+  id                 String        @id @default(uuid())
+  billId             String
+  checkoutRequestId  String        @unique
+  phoneNumber        String
+  amount             Float
+  status             PaymentStatus @default(PENDING)
+  mpesaReceiptNumber String?
+  resultCode         Int?
+  resultDesc         String?
+
+  bill Bills @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Receipts {
+  id            String   @id @default(uuid())
+  billId        String   @unique
+  tenantId      String?
+  amountPaid    Float
+  mpesaCode     String
+  receiptNumber String   @unique
+  month         String
+  pdfPath       String?
+  paidAt        DateTime
+
+  bill   Bills @relation(fields: [billId], references: [id], onDelete: Cascade)
+  tenant Users? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+}
+
+model Notifications {
+  id     String  @id @default(uuid())
+  userId String
+  title  String
+  body   String
+  isRead Boolean @default(false)
+
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Notices {
+  id          String     @id @default(uuid())
+  apartmentId String
+  tenantId    String?
+  type        NoticeType
+  title       String
+  body String
+
+  apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime     @default(now())
+  noticeReads NoticeRead[]
+}
+
+model NoticeRead {
+  noticeId String
+  tenantId String
+
+  tenant Users   @relation(fields: [tenantId], references: [id])
+  notice Notices   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  readAt DateTime
+
+  @@id([noticeId, tenantId])
+}
+
+model Issues {
+  id           String        @id @default(uuid())
+  tenantId     String
+  roomId       String
+  category     IssueCategory
+  priority     IssuePriority @default(MEDIUM)
+  title        String
+  description  String
+  status       IssueStatus   @default(OPEN)
+  landLordNote String?
+  resolvedAt   DateTime?
+
+  tenant Users @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  room Rooms @relation(fields: [roomId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
