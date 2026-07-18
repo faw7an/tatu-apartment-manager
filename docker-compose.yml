@@ -32,8 +32,8 @@ services:
     container_name: tatu-nginx
     restart: always
     ports:
-      80:80
-      443:443
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certbot/conf:/etc/letsencrypt:ro

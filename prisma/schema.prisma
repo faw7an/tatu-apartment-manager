@@ -105,7 +105,7 @@ model Apartment {
   id                   String  @id @default(uuid())
   name                 String
   address              String
-  gracePeriod          Int
+  gracePeriod          Int?
   // these are toggles for notifications on landlord
   alertSubscriptionDue Boolean @default(true)
   alertLeaseEnd        Boolean @default(true)
