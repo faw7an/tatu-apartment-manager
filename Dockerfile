@@ -35,12 +35,17 @@ RUN npm ci
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=builder /app/src/generated ./src/generated
 COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
 
 RUN mkdir -p /app/storage/receipts
 
 RUN addgroup -g 1001 -S nodejs 
 RUN adduser -S nodejs -u 1001
+
+RUN chown -R nodejs:nodejs /app
+
 USER nodejs
 
 EXPOSE 3000

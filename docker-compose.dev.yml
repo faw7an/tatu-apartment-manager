@@ -15,6 +15,7 @@ services:
       - ./src:/app/src        # mount source so hot reload works
     ports:
       - "3000:3000"           # expose API directly (no nginx in dev)
+      - "51212:51212"
     environment:
       NODE_ENV: development
 
