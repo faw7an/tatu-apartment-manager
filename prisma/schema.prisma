@@ -64,12 +64,22 @@ enum ChargeType {
   RATE_BASED
 }
 
+enum OtpPurpose {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+
 // tbles
 model Users {
   id                String  @id @default(uuid())
   fullName          String
   email             String  @unique
   phone             String
+  isEmailVerified    Boolean @default(false)
+  otp               String?
+  otpExpiresAt      DateTime?
+  otpPurpose        OtpPurpose?
   passwordHash      String
   role              Role
   apartmentId       String?
@@ -85,6 +95,7 @@ model Users {
   noticeRead    NoticeRead[]
   notifications Notifications[]
   refreshTokens RefreshTokens[]
+  
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -103,7 +114,7 @@ model RefreshTokens {
 
 model Apartment {
   id                   String  @id @default(uuid())
-  name                 String
+  name                 String @unique
   address              String
   gracePeriod          Int?
   // these are toggles for notifications on landlord

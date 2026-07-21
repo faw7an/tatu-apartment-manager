@@ -1,10 +1,13 @@
 import { Request, Response, } from 'express';
 import bcrypt from "bcryptjs";
 import { prisma } from "../utils/prisma";
+import { OtpPurpose } from '../generated/prisma/client';
 import { JwtPayload } from '../middleware/auth.middleware';
-import { ok, created, unauthorized, conflict, badRequest, notFound } from "../utils/response";
+import { ok, created, unauthorized, forbidden, conflict, badRequest, notFound } from "../utils/response";
 import jwt from 'jsonwebtoken';
-import { addDays } from "../utils/helpers";
+import { addDays, generateOtp, getOtpExpiry } from "../utils/helpers";
+import { sendOtpEmail } from '../services/email.service';
+
 
 function buildPayload(
     user: {
@@ -34,7 +37,7 @@ function signAccess(payload: JwtPayload) {
     } as jwt.SignOptions);
 }
 
-// Register (landlords only)
+// Register (landlords only) > remove otp
 export async function register(req: Request, res: Response): Promise<void> {
     const { fullName, email, phone, password, apartmentName, apartmentAddress } = req.body;
 
@@ -64,59 +67,79 @@ export async function register(req: Request, res: Response): Promise<void> {
     const passwordHash = await bcrypt.hash(password, 10);
 
 
-    const results = await prisma.$transaction(async (tx) => {
-        const apartment = await tx.apartment.create({
-            data: {
-                name: apartmentName,
-                address: apartmentAddress
+    try {
+        const isApartmentNameExist = await prisma.apartment.findUnique({ where: { name: apartmentName } });
+
+        if (isApartmentNameExist) {
+            conflict(res, "Apartment with the same name exists");
+            return;
+        };
+
+
+        const results = await prisma.$transaction(async (tx) => {
+
+            const apartment = await tx.apartment.create({
+                data: {
+                    name: apartmentName,
+                    address: apartmentAddress
+                }
+            });
+
+            const otp = generateOtp();
+            const otpExpiresAt = getOtpExpiry();
+            const otpPurpose = OtpPurpose.EMAIL_VERIFICATION;
+
+            const landlord = await tx.users.create({
+                data: {
+                    fullName,
+                    email,
+                    passwordHash,
+                    phone,
+                    // remove otp
+                    otp,
+                    otpExpiresAt,
+                    otpPurpose,
+                    role: "LANDLORD",
+                    apartmentId: apartment.id
+                }
+            });
+
+            if (landlord) {
+
             }
+            return { apartment, landlord, otp, otpPurpose };
         });
 
-        const landlord = await tx.users.create({
-            data: {
-                fullName,
-                email,
-                passwordHash,
-                phone,
-                role: "LANDLORD",
-                apartmentId: apartment.id
-            }
-        });
-        return { apartment, landlord };
-    });
 
-    const payload = buildPayload(results.landlord);
-    const accessToken = signAccess(payload);
-    const refreshToken = signRefresh(payload);
+        const emailSent = await sendOtpEmail({ otp: results.otp, to: "fauzdasoodais@gmail.com", purpose: results.otpPurpose, name: results.landlord.fullName })
 
-    await prisma.refreshTokens.create({
-        data: {
-            userId: results.landlord.id,
-            token: refreshToken,
-            expiresAt: addDays(new Date(), 30)
-        }
-    })
+        created(
+            res,
+            {
+                // accessToken: accessToken,
+                // refreshToken: refreshToken,
+                user: {
+                    id: results.landlord.id,
+                    fullName: results.landlord.fullName,
+                    email: results.landlord.email,
+                    phoneNumber: results.landlord.phone,
+                    role: results.landlord.role,
+                    apartmentId: results.landlord.apartmentId,
+                    otp: results.landlord.otp,
+                    otpExpiresAt: results.landlord.otpExpiresAt,
+                    otpPurpose: results.landlord.otpPurpose,
 
-    created(
-        res,
-        {
-            accessToken: accessToken,
-            refreshToken: refreshToken,
-            user: {
-                id: results.landlord.id,
-                fullName: results.landlord.fullName,
-                email: results.landlord.email,
-                phoneNumber: results.landlord.phone,
-                role: results.landlord.role,
-                apartmentId: results.landlord.apartmentId,
+                }
+            },
+            "Registered successfully"
+        )
 
-            }
-        },
-        "Registered successfully"
-    );
-
-};
-
+    } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        badRequest(res, errorMessage)
+        return;
+    }
+}
 
 // login
 export async function login(req: Request, res: Response): Promise<void> {
@@ -137,6 +160,14 @@ export async function login(req: Request, res: Response): Promise<void> {
         unauthorized(
             res,
             "Invalid email or password"
+        );
+        return;
+    }
+
+    if (!user.isEmailVerified) {
+        forbidden(
+            res,
+            "Email not verified, please verify email before proceeding"
         );
         return;
     }
@@ -197,7 +228,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
     let payload: JwtPayload;
     try {
         payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!) as JwtPayload;
-        
+
     } catch (e) {
         unauthorized(
             res,
@@ -207,7 +238,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
     }
 
     const storedToken = await prisma.refreshTokens.findUnique({ where: { token: refreshToken } });
-    
+
     if (!storedToken || storedToken.expiresAt < new Date()) {
 
         unauthorized(
@@ -215,7 +246,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
         );
         return;
     }
-    
+
 
     // rotate delete old provide new
     await prisma.refreshTokens.delete({ where: { token: refreshToken } });
@@ -252,10 +283,6 @@ export async function refresh(req: Request, res: Response): Promise<void> {
 
 // profile
 export async function profile(req: Request, res: Response): Promise<void> {
-    console.log("hell");
-    console.log("hell");
-    console.log("hell");
-
     const user = req.user;
 
     const profile = await prisma.users.findUnique({
@@ -282,4 +309,235 @@ export async function profile(req: Request, res: Response): Promise<void> {
     ok(
         res, profile
     )
+}
+
+export async function verifyEmail(req: Request, res: Response): Promise<void> {
+    const { email, otp, purpose } = req.body;
+
+    if (!otp || !email) {
+        badRequest(res, "Email and Otp required");
+        return;
+    }
+    const existingUser = await prisma.users.findUnique({ where: { email } });
+
+
+    if (!existingUser) {
+        notFound(res, "User not found");
+        return;
+    }
+
+    if (!existingUser.otp || !existingUser.otpExpiresAt) {
+        badRequest(
+            res, "No active verification code found"
+        )
+        return;
+    }
+
+    if (otp !== existingUser.otp || new Date() > existingUser.otpExpiresAt || purpose !== OtpPurpose.EMAIL_VERIFICATION) {
+        badRequest(
+            res, "Invalid or expired verification code"
+        )
+        return;
+    }
+
+    const results = await prisma.users.update({
+        where: { email },
+        data: {
+            isEmailVerified: true,
+            otp: null,
+            otpExpiresAt: null
+        },
+        select: {
+            id: true,
+            role: true,
+            apartmentId: true,
+            roomId: true
+
+        }
+    });
+    // console.log(results);
+
+    const payload = buildPayload(results);
+    const accessToken = signAccess(payload);
+    const refreshToken = signRefresh(payload);
+
+    await prisma.refreshTokens.create({
+        data: {
+            userId: results.id,
+            token: refreshToken,
+            expiresAt: addDays(new Date(), 30)
+        }
+    })
+
+    ok(
+        res,
+        results,
+        "Verified email successfully"
+    )
+
+
+}
+
+
+// resend email: remove otp
+export async function resendOtp(req: Request, res: Response): Promise<void> {
+    const { email, purpose } = req.body;
+
+
+    if (!purpose || !email) {
+        badRequest(res, "Email and purpose required");
+        return;
+    }
+    const existingUser = await prisma.users.findUnique({ where: { email } });
+
+
+    if (!existingUser) {
+        notFound(res, "User not found");
+        return;
+    }
+
+    const otp = generateOtp();
+    const otpExpiresAt = getOtpExpiry();
+
+    const results = await prisma.users.update({
+        where: { email },
+        data: {
+            otp,
+            otpExpiresAt,
+            otpPurpose: purpose
+        }
+    });
+
+    // console.log(results);
+
+    await sendOtpEmail({ otp: otp, to: existingUser.email, purpose: purpose, name: existingUser.fullName });
+
+    ok(
+        res, "Otp resent successfully", otp
+    )
+}
+
+// user doesnt remember pass: remove otp
+export async function forgotPass(req: Request, res: Response): Promise<void> {
+    const { email } = req.body;
+
+    if (!email) {
+        badRequest(res, "Email required");
+        return;
+    }
+
+    const existingUser = await prisma.users.findUnique({ where: { email } });
+
+
+    if (!existingUser) {
+        notFound(res, "User not found");
+        return;
+    }
+
+    const otp = generateOtp();
+    const otpExpiresAt = getOtpExpiry();
+
+    const results = await prisma.users.update({
+        where: { email },
+        data: {
+            otp,
+            otpExpiresAt,
+            otpPurpose: OtpPurpose.PASSWORD_RESET
+        }
+    });
+
+    await sendOtpEmail({ otp: otp, to: existingUser.email, purpose: OtpPurpose.PASSWORD_RESET, name: existingUser.fullName });
+
+    ok(
+        res, "Forgotten password otp sent successfully", otp
+    )
+}
+
+// set new pass for forgotten
+export async function resetForgottenPass(req: Request, res: Response): Promise<void> {
+    const { email, otp, password } = req.body;
+
+    if (!email || !otp) {
+        badRequest(res, "Email and otp required");
+    }
+
+    const existingUser = await prisma.users.findUnique({ where: { email } });
+
+    if (!existingUser) {
+        notFound(res, "User not found");
+        return;
+    };
+
+    if (!existingUser.otp || !existingUser.otpExpiresAt || existingUser.otpPurpose !== OtpPurpose.PASSWORD_RESET) {
+        badRequest(res, "Verification code not found");
+        return;
+    }
+
+    if (existingUser.otp !== otp || new Date > existingUser.otpExpiresAt) {
+        badRequest(res, "Invalid or expired Otp");
+        return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const results = await prisma.users.update({
+        where: { email },
+        data: {
+            passwordHash: passwordHash,
+            otp: null,
+            otpExpiresAt: null
+        }
+    });
+
+    ok(
+        res, "Password changed successfully"
+    );
+}
+
+// here user remembers pass
+export async function resetPass(req: Request, res: Response): Promise<void> {
+    const user = req.user;
+    const { password, confirmPassword } = req.body;
+
+    const existingUser = await prisma.users.findUnique({
+        where: { id: user!.userId }
+    });
+
+    if (!existingUser) {
+        notFound(res, "User not found");
+        return;
+    }
+
+    if (!password || !confirmPassword) {
+        badRequest(res, "Password and confirm password are required")
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        badRequest(res, "Passwords do not match")
+        return;
+    }
+
+    const existPass = await bcrypt.compare(password, existingUser.passwordHash);
+
+    if (existPass) {
+        badRequest(
+            res, "New password cannot be the same as your previous password"
+        )
+        return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // console.log(existingUser);
+    const results = await prisma.users.update({
+        where: { id: existingUser.id },
+        data: {
+            passwordHash
+        }
+    });
+
+    ok(
+        res, "Password changed successfully"
+    );
 }

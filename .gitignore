@@ -31,3 +31,4 @@ npm-debug.log*
 # junk
 md-files
 /src/generated/prisma
+codegrab-output.md

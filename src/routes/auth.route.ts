@@ -20,14 +20,29 @@ const loginSchema = z.object({
     password: z.string().min(6)
 })
 
+const resetForgottenSchema = z.object({
+    email: z.string().email(),
+    otp:z.string().min(1).max(6),
+    password: z.string().min(6)
+})
+
 const refreshTokenSchema = z.object({
     refreshToken: z.string().min(1)
 })
-router.post('/auth/register', validate(registerSchema), auth.register);
-router.post('/auth/refresh', validate(refreshTokenSchema), auth.refresh);
-router.post('/auth/login', validate(loginSchema), auth.login);
-router.post('/auth/logout', auth.logout);
-router.get('/auth/profile',verifyJwt, auth.profile);
+router.post('/register', validate(registerSchema), auth.register);
+router.post('/verify-email', auth.verifyEmail);
+
+router.post('/resend-otp', auth.resendOtp);
+router.post('/forgot-password', auth.forgotPass);
+router.post('/reset-forgotten-password',validate(resetForgottenSchema), auth.resetForgottenPass);
+router.post('/reset-password',verifyJwt, auth.resetPass);
+
+
+
+router.post('/login', validate(loginSchema), auth.login);
+router.post('/refresh', validate(refreshTokenSchema), auth.refresh);
+router.post('/logout', auth.logout);
+router.get('/profile',verifyJwt, auth.profile);
 
 
 
