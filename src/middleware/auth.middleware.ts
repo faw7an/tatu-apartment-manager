@@ -21,6 +21,7 @@ declare global {
 export function verifyJwt(req: Request, res: Response, next: NextFunction): void {
     const authHeader = req.headers.authorization;
 
+    // console.log("hello")
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
         unauthorized(res, "No token provided");
         return
@@ -30,7 +31,7 @@ export function verifyJwt(req: Request, res: Response, next: NextFunction): void
 
     try {
         const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET!) as JwtPayload;
-        console.log("hell");
+        // console.log("hell");
 
         req.user = payload;
 

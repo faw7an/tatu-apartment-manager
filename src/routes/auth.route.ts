@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Router } from 'express';
-import { validate } from "../middleware/validate";
+import { validate } from "../middleware/validate.middleware";
 import * as auth from '../controller/auth.controller';
 import { verifyJwt } from '../middleware/auth.middleware';
 

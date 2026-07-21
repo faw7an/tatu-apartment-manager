@@ -81,10 +81,12 @@ export const notFound = (
 // 409
 export const conflict = (
     res:Response,
-    message:String
+    message:String,
+    data?:unknown
 ) => res.status(409).json({
     success: false,
-    message
+    message,
+    data
 })
 
 
