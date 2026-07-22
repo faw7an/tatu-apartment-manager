@@ -37,7 +37,7 @@ function signAccess(payload: JwtPayload) {
     } as jwt.SignOptions);
 }
 
-// Register (landlords only) > remove otp
+// Register (landlords only) > remove otp (removed)
 export async function register(req: Request, res: Response): Promise<void> {
     const { fullName, email, phone, password, apartmentName, apartmentAddress } = req.body;
 
@@ -96,9 +96,9 @@ export async function register(req: Request, res: Response): Promise<void> {
                     passwordHash,
                     phone,
                     // remove otp
-                    otp,
-                    otpExpiresAt,
-                    otpPurpose,
+                    // otp,
+                    // otpExpiresAt,
+                    // otpPurpose,
                     role: "LANDLORD",
                     apartmentId: apartment.id
                 }
@@ -111,7 +111,7 @@ export async function register(req: Request, res: Response): Promise<void> {
         });
 
 
-        const emailSent = await sendOtpEmail({ otp: results.otp, to: "fauzdasoodais@gmail.com", purpose: results.otpPurpose, name: results.landlord.fullName })
+        const emailSent = await sendOtpEmail({ otp: results.otp, to: results.landlord.email, purpose: results.otpPurpose, name: results.landlord.fullName })
 
         created(
             res,
@@ -149,7 +149,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     if (!user) {
         notFound(
             res,
-            "User not found"
+            "Invalid credentials"
         );
         return;
     }
@@ -208,7 +208,7 @@ export async function logout(req: Request, res: Response): Promise<void> {
     const { refreshToken } = req.body;
 
     if (refreshToken) {
-        await prisma.refreshTokens.deleteMany({ where: refreshToken });
+        await prisma.refreshTokens.deleteMany({ where: {token:refreshToken} });
     }
     ok(res, null, "Log out Successfully");
 }
@@ -312,7 +312,7 @@ export async function profile(req: Request, res: Response): Promise<void> {
 }
 
 export async function verifyEmail(req: Request, res: Response): Promise<void> {
-    const { email, otp, purpose } = req.body;
+    const { email, otp } = req.body;
 
     if (!otp || !email) {
         badRequest(res, "Email and Otp required");
@@ -333,12 +333,13 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
         return;
     }
 
-    if (otp !== existingUser.otp || new Date() > existingUser.otpExpiresAt || purpose !== OtpPurpose.EMAIL_VERIFICATION) {
+    if (otp !== existingUser.otp || new Date() > existingUser.otpExpiresAt || existingUser.otpPurpose !== OtpPurpose.EMAIL_VERIFICATION) {
         badRequest(
             res, "Invalid or expired verification code"
         )
         return;
     }
+
 
     const results = await prisma.users.update({
         where: { email },
@@ -371,7 +372,7 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
 
     ok(
         res,
-        results,
+        { accessToken, refreshToken, user: results },
         "Verified email successfully"
     )
 
@@ -379,7 +380,7 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
 }
 
 
-// resend email: remove otp
+// resend email: remove otp (removed)
 export async function resendOtp(req: Request, res: Response): Promise<void> {
     const { email, purpose } = req.body;
 
@@ -413,11 +414,11 @@ export async function resendOtp(req: Request, res: Response): Promise<void> {
     await sendOtpEmail({ otp: otp, to: existingUser.email, purpose: purpose, name: existingUser.fullName });
 
     ok(
-        res, "Otp resent successfully", otp
+        res, "Otp resent successfully"
     )
 }
 
-// user doesnt remember pass: remove otp
+// user doesnt remember pass: remove otp (removed)
 export async function forgotPass(req: Request, res: Response): Promise<void> {
     const { email } = req.body;
 
@@ -449,7 +450,7 @@ export async function forgotPass(req: Request, res: Response): Promise<void> {
     await sendOtpEmail({ otp: otp, to: existingUser.email, purpose: OtpPurpose.PASSWORD_RESET, name: existingUser.fullName });
 
     ok(
-        res, "Forgotten password otp sent successfully", otp
+        res, "Forgotten password otp sent successfully"
     )
 }
 
@@ -459,6 +460,7 @@ export async function resetForgottenPass(req: Request, res: Response): Promise<v
 
     if (!email || !otp) {
         badRequest(res, "Email and otp required");
+        return;
     }
 
     const existingUser = await prisma.users.findUnique({ where: { email } });
@@ -473,7 +475,7 @@ export async function resetForgottenPass(req: Request, res: Response): Promise<v
         return;
     }
 
-    if (existingUser.otp !== otp || new Date > existingUser.otpExpiresAt) {
+    if (existingUser.otp !== otp || new Date() > existingUser.otpExpiresAt) {
         badRequest(res, "Invalid or expired Otp");
         return;
     }
@@ -488,6 +490,10 @@ export async function resetForgottenPass(req: Request, res: Response): Promise<v
             otpExpiresAt: null
         }
     });
+
+    await prisma.refreshTokens.deleteMany({
+        where: { userId: existingUser.id }
+    })
 
     ok(
         res, "Password changed successfully"

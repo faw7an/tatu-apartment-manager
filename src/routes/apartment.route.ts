@@ -8,7 +8,7 @@ import {Role} from '../generated/prisma/client';
 const router = Router();
 
 
-router.get('/apartment', verifyJwt, requireRole(Role.LANDLORD), apartment.getApartment);
+router.get('/apartment', verifyJwt, apartment.getApartment);
 router.patch('/apartment', verifyJwt, requireRole(Role.LANDLORD), apartment.updateApartment);
 
 

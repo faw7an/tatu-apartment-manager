@@ -23,9 +23,14 @@ export const initializeRoomsSchema = z.object({
 
 });
 
+export const updateRentSchema = z.object({
+        rentAmount: z.coerce.number().positive(),
+})
+
 
 router.get('/rooms', verifyJwt, room.getRooms);
-router.post('/rooms/initialize', verifyJwt, validate(initializeRoomsSchema), requireRole(Role.LANDLORD), room.initializeRooms);
+router.patch('/rooms/', verifyJwt, requireRole(Role.LANDLORD), validate(updateRentSchema), room.updateRent);
+router.post('/rooms/initialize', verifyJwt, requireRole(Role.LANDLORD), validate(initializeRoomsSchema),  room.initializeRooms);
 
 router.delete('/rooms/', verifyJwt, requireRole(Role.LANDLORD), room.deleteRooms);
 

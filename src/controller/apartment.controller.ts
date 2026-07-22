@@ -29,6 +29,7 @@ export async function updateApartment( req:Request, res:Response): Promise<void>
 
     if(!name && !address){
         badRequest(res, "Update field required");
+        return;
     };
     
     const existingApartment = await prisma.apartment.findUnique({

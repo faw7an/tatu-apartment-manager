@@ -9,7 +9,7 @@ export function errorHandler(
 
     if (err instanceof Prisma.PrismaClientKnownRequestError) {
         badRequest(
-            res, "Can't reach database server at db"
+            res, "Database operation failed"
         );
         return;
     }
@@ -18,6 +18,7 @@ export function errorHandler(
         badRequest(
             res, 'Service temporarily unavailable'
         );
+        return;
     }
 
     // Validation errors

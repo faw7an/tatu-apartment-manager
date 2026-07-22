@@ -18,6 +18,7 @@ export async function getRooms(req: Request, res: Response): Promise<void> {
     if (!rooms || rooms.length === 0) {
         notFound(
             res, "No rooms found for this apartment");
+        return;
     };
 
     ok(
@@ -66,16 +67,16 @@ export async function initializeRooms(req: Request, res: Response): Promise<void
                 in: roomNumbersToCheck
             }
         },
-        select:{
-            roomNumber:true
+        select: {
+            roomNumber: true
         }
     });
 
-    if (existingRooms.length > 0){
-        const duplicates = existingRooms.map((d)=>d.roomNumber);
+    if (existingRooms.length > 0) {
+        const duplicates = existingRooms.map((d) => d.roomNumber);
 
         conflict(
-            res," Failed to initialize batch: some rooms already exist", duplicates
+            res, " Failed to initialize batch: some rooms already exist", duplicates
         );
 
         return;
@@ -90,6 +91,45 @@ export async function initializeRooms(req: Request, res: Response): Promise<void
         res, results, "Rooms initialized successfully"
     );
 
+}
+
+
+// will make it update more than rent later on:
+export async function updateRent(req: Request, res: Response): Promise<void> {
+    const user = req.user;
+    const { rentAmount } = req.body;
+
+    if (!rentAmount) {
+        badRequest(
+            res, 'Rent amount required'
+        );
+        return;
+    }
+
+    // apartment has rooms?
+    const existingRooms = await prisma.rooms.findMany({
+        where: { apartmentId: user!.apartmentId! }
+    });
+
+    if (!existingRooms) {
+        notFound(
+            res, "Rooms not found for this apartment"
+        );
+        return;
+    }
+
+    const results = await prisma.rooms.updateMany({
+        where: {
+            apartmentId: user!.apartmentId!
+        },
+        data: { rentAmount }
+    });
+
+    ok(
+        res,
+        results,
+        "Rent updated successfully",
+    );
 }
 
 // nuclear
