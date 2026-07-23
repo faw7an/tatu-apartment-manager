@@ -34,8 +34,8 @@ router.post('/verify-email', auth.verifyEmail);
 
 router.post('/resend-otp', auth.resendOtp);
 router.post('/forgot-password', auth.forgotPass);
-router.post('/reset-forgotten-password',validate(resetForgottenSchema), auth.resetForgottenPass);
-router.post('/reset-password',verifyJwt, auth.resetPass);
+router.post('/reset-password',validate(resetForgottenSchema), auth.resetPass);
+// router.post('/reset-password',verifyJwt, auth.resetPass);
 
 
 
