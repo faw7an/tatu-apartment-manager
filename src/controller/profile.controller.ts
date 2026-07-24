@@ -5,10 +5,49 @@ import { prisma } from "../utils/prisma";
 
 
 export async function updateProfile(req: Request, res: Response): Promise<void> {
+    const user = req.user;
+
+    const { fullName, email, phone } = req.body;
+
+    if (!fullName && !email && !phone) {
+        badRequest(
+            res, "Please provide at least one field to update."
+        );
+        return;
+    };
+
+    const existingEmail = await prisma.users.findUnique({ where: { email } });
+
+    if (existingEmail) {
+        conflict(
+            res, "Email address is already in use."
+        );
+        return;
+    }
+
+    const results = await prisma.users.update({
+        where: { id: user!.userId },
+        data: {
+            ...(fullName && { fullName }),
+            ...(email && { email }),
+            ...(phone && { phone })
+        },
+        select:{
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            updatedAt: true
+        }
+    });
+
+    ok(
+        res, results ,"Profile updated successfully"
+    );
 }
 
 export async function updatePassword(req: Request, res: Response): Promise<void> {
-     const user = req.user;
+    const user = req.user;
     const { password, confirmPassword } = req.body;
 
     const existingUser = await prisma.users.findUnique({

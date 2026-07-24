@@ -7,7 +7,9 @@ import * as profile from '../controller/profile.controller';
 
 const router = Router();
 
+router.patch('/profile/',verifyJwt, profile.updateProfile);
 router.post('/profile/password',verifyJwt, profile.updatePassword);
+
 
 export default router;
 
