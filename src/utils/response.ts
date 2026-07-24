@@ -5,10 +5,10 @@ import type { Response } from 'express';
 export const ok = (
     res: Response,
     data: unknown,
-    message?: string
+    message?: string ,
 ) => res.status(200).json({
     success: true,
-    message: message ?? "OK",
+    message: message ?? 'Ok' ,
     data
 });
 
@@ -51,7 +51,7 @@ export const badRequest = (
 // 401
 export const unauthorized = (
     res: Response,
-    message: "Unauthorised"
+    message: string = "Unauthorised"
 ) => res.status(401).json({
     success: false,
     message
@@ -62,7 +62,7 @@ export const unauthorized = (
 // 403
 export const forbidden = (
     res: Response,
-    message: "Forbidden"
+    message: string = "Forbidden"
 ) => res.status(403).json({
     success: false,
     message
@@ -71,7 +71,7 @@ export const forbidden = (
 // 404
 export const notFound = (
     res: Response,
-    message: "Not found"
+    message: string = "Not found"
 ) => res.status(404).json({
     success: false,
     message
@@ -81,10 +81,12 @@ export const notFound = (
 // 409
 export const conflict = (
     res:Response,
-    message:String
+    message:String,
+    data?:unknown
 ) => res.status(409).json({
     success: false,
-    message
+    message,
+    data
 })
 
 

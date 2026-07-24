@@ -1,7 +1,8 @@
-import {z} from "zod";
-import {Router} from 'express';
-import {validate} from "../middleware/validate";
+import { z } from "zod";
+import { Router } from 'express';
+import { validate } from "../middleware/validate.middleware";
 import * as auth from '../controller/auth.controller';
+import { verifyJwt } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -15,10 +16,35 @@ const registerSchema = z.object({
 })
 
 const loginSchema = z.object({
-    email:  z.string().email(),
-    password:  z.string().min(6)
+    email: z.string().email(),
+    password: z.string().min(6)
 })
 
-router.post('/register',validate(registerSchema), auth.register);
+const resetForgottenSchema = z.object({
+    email: z.string().email(),
+    otp:z.string().min(1).max(6),
+    password: z.string().min(6)
+})
+
+const refreshTokenSchema = z.object({
+    refreshToken: z.string().min(1)
+})
+router.post('/register', validate(registerSchema), auth.register);
+router.post('/verify-email', auth.verifyEmail);
+
+router.post('/resend-otp', auth.resendOtp);
+router.post('/forgot-password', auth.forgotPass);
+router.post('/reset-password',validate(resetForgottenSchema), auth.resetPass);
+// router.post('/reset-password',verifyJwt, auth.resetPass);
+
+
+
+router.post('/login', validate(loginSchema), auth.login);
+router.post('/refresh', validate(refreshTokenSchema), auth.refresh);
+router.post('/logout', auth.logout);
+router.get('/profile',verifyJwt, auth.profile);
+
+
+
 
 export default router;
