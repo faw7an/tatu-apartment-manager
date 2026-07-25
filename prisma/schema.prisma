@@ -236,6 +236,8 @@ model UtilityCharges {
   apartment Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+  
+  @@unique([apartmentId, name])
 }
 
 model MpesaTxns {

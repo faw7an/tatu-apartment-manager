@@ -7,6 +7,7 @@ import authRouter from './routes/auth.route';
 import apartmentRouter from './routes/apartment.route';
 import roomRouter from './routes/room.route';
 import profileRouter from './routes/profile.route';
+import utilityRouter from './routes/utilityCharges.route';
 
 
 const app = express();
@@ -25,6 +26,8 @@ app.use(`${endpoint}/auth`, authRouter);
 app.use(endpoint, apartmentRouter);
 app.use(endpoint, roomRouter);
 app.use(endpoint, profileRouter);
+app.use(endpoint, utilityRouter);
+
 
 
 

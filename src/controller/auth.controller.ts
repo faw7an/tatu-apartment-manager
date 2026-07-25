@@ -95,10 +95,9 @@ export async function register(req: Request, res: Response): Promise<void> {
                     email,
                     passwordHash,
                     phone,
-                    // remove otp
-                    // otp,
-                    // otpExpiresAt,
-                    // otpPurpose,
+                    otp,
+                    otpExpiresAt,
+                    otpPurpose,
                     role: "LANDLORD",
                     apartmentId: apartment.id
                 }
@@ -116,8 +115,6 @@ export async function register(req: Request, res: Response): Promise<void> {
         created(
             res,
             {
-                // accessToken: accessToken,
-                // refreshToken: refreshToken,
                 user: {
                     id: results.landlord.id,
                     fullName: results.landlord.fullName,
@@ -125,10 +122,9 @@ export async function register(req: Request, res: Response): Promise<void> {
                     phoneNumber: results.landlord.phone,
                     role: results.landlord.role,
                     apartmentId: results.landlord.apartmentId,
-                    otp: results.landlord.otp,
-                    otpExpiresAt: results.landlord.otpExpiresAt,
-                    otpPurpose: results.landlord.otpPurpose,
-
+                    // otp: results.landlord.otp,
+                    // otpExpiresAt: results.landlord.otpExpiresAt,
+                    // otpPurpose: results.landlord.otpPurpose,
                 }
             },
             "Registered successfully"
