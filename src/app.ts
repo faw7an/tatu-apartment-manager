@@ -8,6 +8,9 @@ import apartmentRouter from './routes/apartment.route';
 import roomRouter from './routes/room.route';
 import profileRouter from './routes/profile.route';
 import utilityRouter from './routes/utilityCharges.route';
+import subscriptionRouter from './routes/subscription.route';
+import tenantRouter from './routes/tenant.route';
+
 
 
 const app = express();
@@ -27,6 +30,9 @@ app.use(endpoint, apartmentRouter);
 app.use(endpoint, roomRouter);
 app.use(endpoint, profileRouter);
 app.use(endpoint, utilityRouter);
+app.use(endpoint, subscriptionRouter);
+app.use(endpoint, tenantRouter);
+
 
 
 

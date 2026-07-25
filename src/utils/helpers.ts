@@ -14,9 +14,9 @@ export function generateOtp(): string{
     return crypto.randomInt(10000,100000).toString();
 }
 
-export function getOtpExpiry(): Date{
+export function getOtpExpiry(minutes:number = 10): Date{
     const currentDate = new Date();
-    const minutesToAdd = 10;
+    const minutesToAdd = minutes;
 
 
     return new Date(currentDate.getTime() + minutesToAdd * 60 * 1000 );
