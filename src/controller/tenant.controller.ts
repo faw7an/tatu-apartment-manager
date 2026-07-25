@@ -52,7 +52,7 @@ export async function getTenants(req: Request, res: Response): Promise<void> {
 
 }
 
-
+// get tenant by id
 export async function getTenantById(req: Request, res: Response): Promise<void> {
     const user = req.user;
     const { id } = req.params;
