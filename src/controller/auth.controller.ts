@@ -342,7 +342,8 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
         data: {
             isEmailVerified: true,
             otp: null,
-            otpExpiresAt: null
+            otpExpiresAt: null,
+            otpPurpose:null
         },
         select: {
             id: true,
