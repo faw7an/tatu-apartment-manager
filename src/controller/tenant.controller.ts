@@ -145,7 +145,8 @@ export async function createTenant(req: Request, res: Response): Promise<void> {
         return;
     }
 
-    const tempPassword = `$fullName001`;
+    const tempPassword = `${fullName}001`;
+    console.log(tempPassword)
     const passwordHash = await bcrypt.hash(tempPassword, 10);
     const leaseStart = new Date();
 

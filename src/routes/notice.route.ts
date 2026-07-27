@@ -21,5 +21,10 @@ const createNoticeSchema = z.object({
 router.get('/notices', verifyJwt, requireRole(Role.LANDLORD), notice.getNotices);
 router.post('/notices', verifyJwt, requireRole(Role.LANDLORD), validate(createNoticeSchema), notice.createNotice);
 
+router.get('/notices/mine', verifyJwt, requireRole(Role.TENANT), notice.getMyNotices);
+router.post('/notices/:id/read', verifyJwt, requireRole(Role.TENANT), notice.markAsRead);
+router.post('/notices/read-all', verifyJwt, requireRole(Role.TENANT), notice.markAllAsRead);
+
+
 
 export default router;
