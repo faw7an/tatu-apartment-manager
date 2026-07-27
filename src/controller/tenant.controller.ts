@@ -9,7 +9,7 @@ import { OtpPurpose } from '../generated/prisma/client';
 
 // get all tenants
 export async function getTenants(req: Request, res: Response): Promise<void> {
-    const user = req.body;
+    const user = req.user;
 
     const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
 
@@ -227,7 +227,7 @@ export async function removeTenantById(req: Request, res: Response): Promise<voi
     }
 
     await prisma.$transaction(async (tx) => {
-        await prisma.refreshTokens.deleteMany({
+        await tx.refreshTokens.deleteMany({
             where: {
                 userId: tenant.id
             }
@@ -240,7 +240,7 @@ export async function removeTenantById(req: Request, res: Response): Promise<voi
                 }
             });
 
-            await prisma.rooms.update({
+            await tx.rooms.update({
                 where: {
                     id: tenant.roomId
                 },

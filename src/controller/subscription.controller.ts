@@ -23,7 +23,7 @@ export async function getSubscriptions(req: Request, res: Response): Promise<voi
     const subs = Array.from(existingSubscription, (_, index) => {
         var sub = existingSubscription[index];
         const daysUntilRenawal = Math.ceil(
-            (sub.renewalDate.getTime()) / (1000 * 60 * 60 * 24)
+            (sub.renewalDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
         );
 
         return {
@@ -59,7 +59,8 @@ export async function createSubscription(req: Request, res: Response): Promise<v
     if (existingSub) {
         conflict(
             res, `A subscription named "${name}" already exists for this apartment.`
-        )
+        );
+        return;
     }
 
     const results = await prisma.apartmentSubscriptions.create({

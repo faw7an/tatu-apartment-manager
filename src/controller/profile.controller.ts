@@ -16,7 +16,11 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
         return;
     };
 
-    const existingEmail = await prisma.users.findUnique({ where: { email } });
+    const existingEmail = await prisma.users.findUnique({
+        where: {
+            email,
+        }
+    });
 
     if (existingEmail) {
         conflict(
@@ -32,7 +36,7 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
             ...(email && { email }),
             ...(phone && { phone })
         },
-        select:{
+        select: {
             id: true,
             fullName: true,
             email: true,
@@ -42,7 +46,7 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
     });
 
     ok(
-        res, results ,"Profile updated successfully"
+        res, results, "Profile updated successfully"
     );
 }
 
