@@ -22,6 +22,7 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
         }
     });
 
+    
     if (existingEmail) {
         conflict(
             res, "Email address is already in use."
