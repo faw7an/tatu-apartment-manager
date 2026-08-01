@@ -1,0 +1,31 @@
+import { Router } from "express";
+import { z } from 'zod';
+import { verifyJwt, requireRole } from '../middleware/auth.middleware';
+import { Role, NoticeType } from '../generated/prisma/client';
+import { validate } from "../middleware/validate.middleware";
+import * as bills from '../controller/bills.controller';
+
+const router = Router();
+
+const monthSchema = z.object({
+    month: z.string().refine((val) => {
+        if (val.length !== 7 || !val.includes("-")) return false;
+
+        const [yearStr, monthStr] = val.split('-');
+
+        const yr = Number(yearStr);
+        const month = Number(monthStr);
+
+        if (isNaN(yr) || isNaN(month)) return false;
+
+        return yearStr.length === 4 && month >= 1 && month <= 12;
+    }, {
+        message: "Month must be in YYYY-MM format (e.g., '2026-08')"
+    })
+});
+
+router.post('/bills/generate', verifyJwt, requireRole(Role.LANDLORD), validate(monthSchema), bills.generateBills);
+router.get('/bills', verifyJwt, requireRole(Role.LANDLORD), validate(monthSchema), bills.getBills);
+
+
+export default router;

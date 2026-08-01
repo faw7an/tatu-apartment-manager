@@ -11,6 +11,7 @@ import utilityRouter from './routes/utilityCharges.route';
 import subscriptionRouter from './routes/subscription.route';
 import tenantRouter from './routes/tenant.route';
 import noticeRouter from './routes/notice.route';
+import billsRouter from './routes/bills.route';
 
 
 
@@ -35,6 +36,8 @@ app.use(endpoint, utilityRouter);
 app.use(endpoint, subscriptionRouter);
 app.use(endpoint, tenantRouter);
 app.use(endpoint, noticeRouter);
+app.use(endpoint, billsRouter);
+
 
 
 
