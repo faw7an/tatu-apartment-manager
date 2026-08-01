@@ -124,10 +124,11 @@ export async function getBills(req: Request, res: Response): Promise<void> {
             }
         },
         select: {
+            id: true,
             rentAmount: true,
             tenant: {
                 select: {
-                    id:true,
+                    id: true,
                     fullName: true,
                 }
             },
@@ -150,22 +151,71 @@ export async function getBills(req: Request, res: Response): Promise<void> {
         const total = bill.rentAmount + utilitiesTotalBill;
         // console.log(total);
 
-        return({
+        return ({
             ...bill,
             total
         })
     });
 
     // console.log(billTotal);
-    
+
     ok(
-        res,"Bills fetched successfully"
+        res, billTotal, "Bills fetched successfully"
     );
 }
 
 
 export async function updateLineItem(req: Request, res: Response): Promise<void> {
+    const user = req.user;
+    const { units } = req.body;
+    const { billId, lineItemId } = req.params
 
+
+    if (!lineItemId || typeof lineItemId !== 'string') {
+        badRequest(res, "Invalid lineItemId");
+        return;
+    }
+    if (!billId || typeof billId !== 'string') {
+        badRequest(res, "Invalid billId");
+        return;
+    }
+
+    const billLineItem = await prisma.billLineItems.findFirst({
+        where: {
+            id: lineItemId,
+            billId: billId
+        }
+    });
+
+    // console.log(billLineItem);
+    if(!billLineItem){
+        notFound(
+            res,"Bill line item not found"
+        )
+        return;
+    }
+
+    if(billLineItem.chargeType !== "RATE_BASED"){
+        conflict(
+            res,`Cannot update units on a ${billLineItem.chargeType.toLowerCase()} utility charge. Units can only be updated for rate-based charges.`
+        )
+        return;
+    }
+
+    const results = await prisma.billLineItems.update({
+        where: {
+            id: lineItemId,
+            billId: billId
+        },
+        data: {
+            units,
+            amount: units * billLineItem.rate!
+        }
+    })
+
+    ok(
+        res, results,"Line Item updated successfully"
+    )
 }
 
 

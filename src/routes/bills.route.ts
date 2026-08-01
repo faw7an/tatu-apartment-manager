@@ -24,8 +24,13 @@ const monthSchema = z.object({
     })
 });
 
+const unitSchema = z.object({
+    units:z.coerce.number().min(0)
+})
+
 router.post('/bills/generate', verifyJwt, requireRole(Role.LANDLORD), validate(monthSchema), bills.generateBills);
 router.get('/bills', verifyJwt, requireRole(Role.LANDLORD), validate(monthSchema), bills.getBills);
+router.patch('/bills/:billId/line-items/:lineItemId', verifyJwt, requireRole(Role.LANDLORD), validate(unitSchema), bills.updateLineItem);
 
 
 export default router;
