@@ -29,11 +29,11 @@ const unitSchema = z.object({
 })
 
 router.post('/bills/generate', verifyJwt, requireRole(Role.LANDLORD), validate(monthSchema), bills.generateBills);
-router.get('/bills', verifyJwt, requireRole(Role.LANDLORD), validate(monthSchema), bills.getBills);
+router.get('/bills', verifyJwt, requireRole(Role.LANDLORD), bills.getBills);
 router.patch('/bills/:billId/line-items/:lineItemId', verifyJwt, requireRole(Role.LANDLORD), validate(unitSchema), bills.updateLineItem);
 router.post('/bills/send-invoices', verifyJwt, requireRole(Role.LANDLORD), validate(monthSchema), bills.sendInvoices);
 
-router.get('/bills/mine/current', verifyJwt, requireRole(Role.TENANT), validate(monthSchema), bills.getCurrentBill);
+router.get('/bills/mine/current', verifyJwt, requireRole(Role.TENANT), bills.getCurrentBill);
 router.get('/bills/mine', verifyJwt, requireRole(Role.TENANT), bills.getMyBills);
 
 

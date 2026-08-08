@@ -11,7 +11,7 @@ export function addDays(date: Date, days: number): Date {
 // getOtpExpiry()    → returns new Date() + 10 minutes
 
 export function generateOtp(): string {
-    return crypto.randomInt(10000, 100000).toString();
+    return crypto.randomInt(100000, 1000000).toString();
 }
 
 export function getOtpExpiry(minutes: number = 10): Date {

@@ -48,7 +48,7 @@ export async function generateBills(req: Request, res: Response): Promise<void> 
         }
     });
 
-    console.log(activeUtilityCharges);
+    // console.log(activeUtilityCharges);
 
 
     const tenantIds = occupiedRooms.map(room => room.tenant!.id).filter((id) => id !== undefined);
@@ -70,11 +70,13 @@ export async function generateBills(req: Request, res: Response): Promise<void> 
         existingBills.map(bill => bill.tenantId)
     );
 
+    let generated = 0;
+
     for (const room of occupiedRooms) {
         if (existingTenantIds.has(room.tenant!.id)) continue;
 
         const dueDay = room.rentDueDate ?? 5;
-        const dueDate = new Date(year, mon, dueDay);
+        const dueDate = new Date(year, mon - 1, dueDay);
 
         const { bill, billLineItem } = await prisma.$transaction(async (tx) => {
             const bill = await tx.bills.create({
@@ -100,26 +102,40 @@ export async function generateBills(req: Request, res: Response): Promise<void> 
                     units: charge.chargeType === "RATE_BASED" ? 0 : null
                 }))
             });
-
+            generated++;
             return { bill, billLineItem }
         });
 
         // console.log(`Generating bills for ${room.tenant!.fullName}`);
     }
 
+    const skipped = existingTenantIds.size;
+
     created(
-        res, "Bills genereated successfully"
+        res, {
+        generatedCount: generated,
+        skippedCount: skipped
+    }, "Bills genereated successfully"
     );
 
 }
 
 export async function getBills(req: Request, res: Response): Promise<void> {
     const user = req.user;
-    const { month } = req.body;
+    const month = req.query.month as string | undefined;
+
+    if (month && !/^\d{4}-\d{2}$/.test(month)) {
+        badRequest(res, "Month must be in YYYY-MM format")
+        return
+    }
+
+    const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+
+    const targetMonth = month ?? currentMonth;
 
     const bills = await prisma.bills.findMany({
         where: {
-            month,
+            month: targetMonth,
             room: {
                 apartmentId: user!.apartmentId!,
             }
@@ -144,7 +160,7 @@ export async function getBills(req: Request, res: Response): Promise<void> {
 
     // console.log(bills);
 
-    const billTotal = bills.map(bill => {
+    const billWithTotal = bills.map(bill => {
         const utilitiesTotalBill = bill.billLineItems.reduce(
             (sum, item) => sum + item.amount,
             0
@@ -161,7 +177,7 @@ export async function getBills(req: Request, res: Response): Promise<void> {
     // console.log(billTotal);
 
     ok(
-        res, billTotal, "Bills fetched successfully"
+        res, billWithTotal, "Bills fetched successfully"
     );
 }
 
@@ -226,7 +242,10 @@ export async function sendInvoices(req: Request, res: Response): Promise<void> {
 
     const bills = await prisma.bills.findMany({
         where: {
-            month
+            month,
+            room: {
+                apartmentId: user!.apartmentId!
+            }
         },
         select: {
             id: true,
@@ -260,14 +279,13 @@ export async function getMyBills(req: Request, res: Response): Promise<void> {
         },
         select: {
             id: true,
+            month: true,
+            status: true,
+            dueDate: true,
+            paidAt: true,
             rentAmount: true,
-            billLineItems: {
-                select: {
-                    amount: true,
-                }
-            }
+            billLineItems: true
         }
-
     });
 
     if (bills.length === 0) {
@@ -279,13 +297,13 @@ export async function getMyBills(req: Request, res: Response): Promise<void> {
 
     // console.log(bills);
 
-    const total = bills.map(bill => ({
-        id: bill.id,
+    const billsWithTotal = bills.map(bill => ({
+        ...bill,
         total: billTotal(bill)
     }));
 
     ok(
-        res, total
+        res, billsWithTotal
     );
 
 }
@@ -293,24 +311,32 @@ export async function getMyBills(req: Request, res: Response): Promise<void> {
 
 export async function getCurrentBill(req: Request, res: Response): Promise<void> {
     const user = req.user;
-    const { month } = req.body;
+    const month = req.query.month as string | undefined;
 
-  
+    if (month && !/^\d{4}-\d{2}$/.test(month)) {
+        badRequest(res, "Month must be in YYYY-MM format")
+        return
+    }
+
+    const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+
+    const targetMonth = month ?? currentMonth;
+
+
     const bill = await prisma.bills.findFirst({
         where: {
             tenantId: user!.userId!,
-            month
+            month: targetMonth
         },
         select: {
             id: true,
+            month: true,
+            status: true,
+            dueDate: true,
+            paidAt: true,
             rentAmount: true,
-            billLineItems: {
-                select: {
-                    amount: true,
-                }
-            }
+            billLineItems: true
         }
-
     });
 
     if (!bill) {
@@ -322,12 +348,12 @@ export async function getCurrentBill(req: Request, res: Response): Promise<void>
 
     const total = billTotal(bill);
 
-    
-     ok(
+
+    ok(
         res, {
-            id:bill.id,
-            total
-        }
+        ...bill,
+        total
+    }
     );
 
 }
