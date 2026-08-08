@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { ok, created, unauthorized, forbidden, conflict, badRequest, notFound } from "../utils/response";
 import { prisma } from "../utils/prisma";
-import {billTotal} from "../utils/helpers";
+import { billTotal } from "../utils/helpers";
 
 export async function generateBills(req: Request, res: Response): Promise<void> {
     const user = req.user;
@@ -189,16 +189,16 @@ export async function updateLineItem(req: Request, res: Response): Promise<void>
     });
 
     // console.log(billLineItem);
-    if(!billLineItem){
+    if (!billLineItem) {
         notFound(
-            res,"Bill line item not found"
+            res, "Bill line item not found"
         )
         return;
     }
 
-    if(billLineItem.chargeType !== "RATE_BASED"){
+    if (billLineItem.chargeType !== "RATE_BASED") {
         conflict(
-            res,`Cannot update units on a ${billLineItem.chargeType.toLowerCase()} utility charge. Units can only be updated for rate-based charges.`
+            res, `Cannot update units on a ${billLineItem.chargeType.toLowerCase()} utility charge. Units can only be updated for rate-based charges.`
         )
         return;
     }
@@ -215,38 +215,38 @@ export async function updateLineItem(req: Request, res: Response): Promise<void>
     })
 
     ok(
-        res, results,"Line Item updated successfully"
+        res, results, "Line Item updated successfully"
     )
 }
 
 
 export async function sendInvoices(req: Request, res: Response): Promise<void> {
     const user = req.user;
-    const {month} = req.body;
+    const { month } = req.body;
 
     const bills = await prisma.bills.findMany({
-        where:{
+        where: {
             month
         },
-        select:{
-            id:true,
-            tenantId:true,
-            status:true
+        select: {
+            id: true,
+            tenantId: true,
+            status: true
         }
     });
 
-    if(bills.length === 0 ){
+    if (bills.length === 0) {
         notFound(
             res, "No available bills found for this month"
         );
         return;
     }
-// TODO: push notification
+    // TODO: push notification
 
     ok(
-        res,{
-            sent:bills.length
-        }, "Invoices sent successfully"
+        res, {
+        sent: bills.length
+    }, "Invoices sent successfully"
     );
 }
 
@@ -255,35 +255,35 @@ export async function getMyBills(req: Request, res: Response): Promise<void> {
     const user = req.user;
 
     const bills = await prisma.bills.findMany({
-        where:{
+        where: {
             tenantId: user!.userId!
         },
-        select:{
-            id:true,
-            rentAmount:true,
-            billLineItems:{
-                select:{
-                    amount:true,
+        select: {
+            id: true,
+            rentAmount: true,
+            billLineItems: {
+                select: {
+                    amount: true,
                 }
             }
         }
 
     });
 
-    if(bills.length === 0){
+    if (bills.length === 0) {
         notFound(
-            res,"No available bills for this user"
+            res, "No available bills for this user"
         );
         return;
     }
 
-    console.log(bills);
+    // console.log(bills);
 
-    const total = bills.map(bill=> ({
-        id:bill.id,
-        total:billTotal(bill)
+    const total = bills.map(bill => ({
+        id: bill.id,
+        total: billTotal(bill)
     }));
-    
+
     ok(
         res, total
     );
@@ -292,6 +292,43 @@ export async function getMyBills(req: Request, res: Response): Promise<void> {
 
 
 export async function getCurrentBill(req: Request, res: Response): Promise<void> {
+    const user = req.user;
+    const { month } = req.body;
+
+  
+    const bill = await prisma.bills.findFirst({
+        where: {
+            tenantId: user!.userId!,
+            month
+        },
+        select: {
+            id: true,
+            rentAmount: true,
+            billLineItems: {
+                select: {
+                    amount: true,
+                }
+            }
+        }
+
+    });
+
+    if (!bill) {
+        notFound(
+            res, "No available bills for this user"
+        );
+        return;
+    }
+
+    const total = billTotal(bill);
+
+    
+     ok(
+        res, {
+            id:bill.id,
+            total
+        }
+    );
 
 }
 
