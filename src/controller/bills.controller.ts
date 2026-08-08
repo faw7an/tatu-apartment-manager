@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { ok, created, unauthorized, forbidden, conflict, badRequest, notFound } from "../utils/response";
 import { prisma } from "../utils/prisma";
+import {billTotal} from "../utils/helpers";
 
 export async function generateBills(req: Request, res: Response): Promise<void> {
     const user = req.user;
@@ -220,11 +221,72 @@ export async function updateLineItem(req: Request, res: Response): Promise<void>
 
 
 export async function sendInvoices(req: Request, res: Response): Promise<void> {
+    const user = req.user;
+    const {month} = req.body;
 
+    const bills = await prisma.bills.findMany({
+        where:{
+            month
+        },
+        select:{
+            id:true,
+            tenantId:true,
+            status:true
+        }
+    });
+
+    if(bills.length === 0 ){
+        notFound(
+            res, "No available bills found for this month"
+        );
+        return;
+    }
+// TODO: push notification
+
+    ok(
+        res,{
+            sent:bills.length
+        }, "Invoices sent successfully"
+    );
 }
 
 
 export async function getMyBills(req: Request, res: Response): Promise<void> {
+    const user = req.user;
+
+    const bills = await prisma.bills.findMany({
+        where:{
+            tenantId: user!.userId!
+        },
+        select:{
+            id:true,
+            rentAmount:true,
+            billLineItems:{
+                select:{
+                    amount:true,
+                }
+            }
+        }
+
+    });
+
+    if(bills.length === 0){
+        notFound(
+            res,"No available bills for this user"
+        );
+        return;
+    }
+
+    console.log(bills);
+
+    const total = bills.map(bill=> ({
+        id:bill.id,
+        total:billTotal(bill)
+    }));
+    
+    ok(
+        res, total
+    );
 
 }
 
