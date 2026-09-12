@@ -95,10 +95,9 @@ export async function register(req: Request, res: Response): Promise<void> {
                     email,
                     passwordHash,
                     phone,
-                    // remove otp
-                    // otp,
-                    // otpExpiresAt,
-                    // otpPurpose,
+                    otp,
+                    otpExpiresAt,
+                    otpPurpose,
                     role: "LANDLORD",
                     apartmentId: apartment.id
                 }
@@ -109,8 +108,7 @@ export async function register(req: Request, res: Response): Promise<void> {
             }
             return { apartment, landlord, otp, otpPurpose };
         });
-
-
+        
         const emailSent = await sendOtpEmail({ otp: results.otp, to: results.landlord.email, purpose: results.otpPurpose, name: results.landlord.fullName })
 
         created(
@@ -125,9 +123,9 @@ export async function register(req: Request, res: Response): Promise<void> {
                     phoneNumber: results.landlord.phone,
                     role: results.landlord.role,
                     apartmentId: results.landlord.apartmentId,
-                    otp: results.landlord.otp,
-                    otpExpiresAt: results.landlord.otpExpiresAt,
-                    otpPurpose: results.landlord.otpPurpose,
+                    // otp: results.landlord.otp,
+                    // otpExpiresAt: results.landlord.otpExpiresAt,
+                    // otpPurpose: results.landlord.otpPurpose,
 
                 }
             },
