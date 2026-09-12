@@ -117,8 +117,6 @@ export async function register(req: Request, res: Response): Promise<void> {
         created(
             res,
             {
-                // accessToken: accessToken,
-                // refreshToken: refreshToken,
                 user: {
                     id: results.landlord.id,
                     fullName: results.landlord.fullName,
@@ -129,7 +127,6 @@ export async function register(req: Request, res: Response): Promise<void> {
                     // otp: results.landlord.otp,
                     // otpExpiresAt: results.landlord.otpExpiresAt,
                     // otpPurpose: results.landlord.otpPurpose,
-
                 }
             },
             "Registered successfully"
@@ -347,7 +344,8 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
         data: {
             isEmailVerified: true,
             otp: null,
-            otpExpiresAt: null
+            otpExpiresAt: null,
+            otpPurpose:null
         },
         select: {
             id: true,
@@ -501,50 +499,3 @@ export async function resetPass(req: Request, res: Response): Promise<void> {
     );
 }
 
-// here user remembers pass
-// export async function resetPass(req: Request, res: Response): Promise<void> {
-//     const user = req.user;
-//     const { password, confirmPassword } = req.body;
-
-//     const existingUser = await prisma.users.findUnique({
-//         where: { id: user!.userId }
-//     });
-
-//     if (!existingUser) {
-//         notFound(res, "User not found");
-//         return;
-//     }
-
-//     if (!password || !confirmPassword) {
-//         badRequest(res, "Password and confirm password are required")
-//         return;
-//     }
-
-//     if (password !== confirmPassword) {
-//         badRequest(res, "Passwords do not match")
-//         return;
-//     }
-
-//     const existPass = await bcrypt.compare(password, existingUser.passwordHash);
-
-//     if (existPass) {
-//         badRequest(
-//             res, "New password cannot be the same as your previous password"
-//         )
-//         return;
-//     }
-
-//     const passwordHash = await bcrypt.hash(password, 10);
-
-//     // console.log(existingUser);
-//     const results = await prisma.users.update({
-//         where: { id: existingUser.id },
-//         data: {
-//             passwordHash
-//         }
-//     });
-
-//     ok(
-//         res, "Password changed successfully"
-//     );
-// }
