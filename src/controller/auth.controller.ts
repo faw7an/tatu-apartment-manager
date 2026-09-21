@@ -103,15 +103,15 @@ export async function register(req: Request, res: Response): Promise<void> {
                 }
             });
 
-            // fix this issue later check if this function is actually needed
 
+   
+// check on this function later wat it was for
             // if (landlord) {
 
             // }
             return { apartment, landlord, otp, otpPurpose };
         });
-
-
+        
         const emailSent = await sendOtpEmail({ otp: results.otp, to: results.landlord.email, purpose: results.otpPurpose, name: results.landlord.fullName })
 
         created(

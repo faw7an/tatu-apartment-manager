@@ -1,6 +1,7 @@
 import { resend } from '../utils/mailer';
 import { OtpPurpose } from '../generated/prisma/client';
 
+
 interface OtpParams {
     to: string
     otp: string
@@ -18,6 +19,7 @@ export async function sendOtpEmail({ otp, to, purpose, name }: OtpParams): Promi
         const subtitle = `Use the code below to complete your request for ${emailPurpose}.`;
         let helpText = "Need help with your account? Contact our support team.";
 
+        console.log(process.env.RESEND_FROM_EMAIL);
         
         const { data, error } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL!,
