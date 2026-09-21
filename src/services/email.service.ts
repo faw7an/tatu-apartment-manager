@@ -20,9 +20,9 @@ export async function sendOtpEmail({ otp, to, purpose, name }: OtpParams): Promi
 
         
         const { data, error } = await resend.emails.send({
-            from: process.env.RESEND_EMAIL!,
+            from: process.env.RESEND_FROM_EMAIL!,
             // to: [to],
-            to: [process.env.TEMP_EMAIL!],
+            to: [process.env.TEMP_TO_EMAIL!],
             subject: `Otp code for ${emailPurpose}`,
             html: `
             <!DOCTYPE html>

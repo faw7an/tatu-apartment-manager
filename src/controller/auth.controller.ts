@@ -103,9 +103,11 @@ export async function register(req: Request, res: Response): Promise<void> {
                 }
             });
 
-            if (landlord) {
+            // fix this issue later check if this function is actually needed
 
-            }
+            // if (landlord) {
+
+            // }
             return { apartment, landlord, otp, otpPurpose };
         });
 
