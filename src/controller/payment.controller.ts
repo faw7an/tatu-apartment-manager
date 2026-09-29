@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ok, created, unauthorized, forbidden, conflict, badRequest, notFound } from "../utils/response";
 import { prisma } from "../utils/prisma";
 import { Role, BillStatus  } from '../generated/prisma/client';
+import {getAccessToken , initiateStkPush} from '../services/mpesa.service';
 
 
 export async function stkPush(req: Request, res:Response):Promise<void>{
@@ -44,5 +45,15 @@ export async function stkPush(req: Request, res:Response):Promise<void>{
     ok(
         res,
         "Stk-pushed successfully"
+    );
+}
+
+export async function test(req:Request , res:Response):Promise<void>{
+    const results = initiateStkPush(
+          '254708374149', 3000,'string', 'string','string',
+    );
+
+    ok(
+        res, results
     );
 }

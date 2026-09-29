@@ -16,9 +16,9 @@ export async function getAccessToken() {
         }
         );
 
-        console.log(response);
+        // console.log(response.data.access_token);
 
-        // return access
+        return response.data.access_token;
 
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -38,9 +38,9 @@ export async function getAccessToken() {
 
 export function generatePassword() {
     const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
-    const password = Buffer.from(`${process.env.MPESA_CONSUMER_KEY}:${process.env.MPESA_CONSUMER_SECRET}`).toString('base64');
+    const password = Buffer.from(`${process.env.MPESA_SHORTCODE}${process.env.MPESA_PASSKEY}${timestamp}`).toString('base64');
 
-    console.log(password);
+    // console.log(password);
 
     return { password, timestamp };
 }
@@ -51,8 +51,7 @@ export async function initiateStkPush(
     billId: string,
     accountRef: string,
     description: string,
-)
-    : Promise<{ checkoutRequestId: string, merchantRequestId: string }> {
+): Promise<{ checkoutRequestId: string, merchantRequestId: string }> {
 
     const url = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest';
 
@@ -62,6 +61,8 @@ export async function initiateStkPush(
         return phone;
     }
 
+    const accessToken = await getAccessToken();
+
     const { password, timestamp } = generatePassword();
     const reqBody = {
         BusinessShortCode: process.env.MPESA_SHORTCODE,
@@ -69,19 +70,27 @@ export async function initiateStkPush(
         Timestamp: timestamp,
         TransactionType: "CustomerPayBillOnline",
         Amount: Math.ceil(amount), // must be whole number
-        PartyA: formattedPhoneNo,
+        PartyA: formattedPhoneNo(phone),
         PartyB: process.env.MPESA_SHORTCODE,
-        PhoneNumber: formattedPhoneNo,
+        PhoneNumber: formattedPhoneNo(phone),
         CallBackURL: process.env.MPESA_CALLBACK_URL,
         AccountReference: accountRef,
         TransactionDesc: description
     }
-    const response = axios.post(
-        url, reqBody
+    const response = await axios.post(
+        url, reqBody, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+
+        }
+    }
     )
 
-    console.log(response);
-    // return 
+
+    console.log("MPESA RESPONSE:");
+    console.log(response.status);
+    console.log(response.data);
     return { checkoutRequestId: 'string', merchantRequestId: 'string' }
 }
 
