@@ -1,6 +1,5 @@
 import axios from 'axios';
-import { error } from 'node:console';
-import { base64 } from 'zod';
+
 
 
 export async function getAccessToken() {
@@ -88,11 +87,25 @@ export async function initiateStkPush(
     )
 
 
-    console.log("MPESA RESPONSE:");
-    console.log(response.status);
-    console.log(response.data);
-    return { checkoutRequestId: 'string', merchantRequestId: 'string' }
+    // console.log("MPESA RESPONSE:");
+    // console.log(response.status);
+    // console.log(response.data);
+    return { checkoutRequestId: response.data.CheckoutRequestID, merchantRequestId: response.data.MerchantRequestID }
 }
 
+export async function processCallback(callbackData: any): Promise<void> {
+    const stkCallback = callbackData?.Body?.stkCallback
+
+    if(!stkCallback){
+        console.warn('Callback ignored: no stkCallback in body');
+        return;
+    }
+    
+    // console.log("RAW CALLBACK:")
+    // console.log(JSON.stringify(callbackData, null, 2)) // full pretty print
+    
+    console.log("STK CALLBACK:", stkCallback);
+
+}
 
 

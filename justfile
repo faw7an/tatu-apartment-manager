@@ -17,6 +17,9 @@ generate:
 migrate:
     docker compose -f docker-compose.yml -f docker-compose.dev.yml exec api npx prisma migrate dev
 
+db-push:
+ docker compose -f docker-compose.yml -f docker-compose.dev.yml exec api npx prisma db push
+
 migrate-reset:
     docker compose -f docker-compose.yml -f docker-compose.dev.yml exec api npx prisma migrate reset 
 

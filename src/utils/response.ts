@@ -5,10 +5,10 @@ import type { Response } from 'express';
 export const ok = (
     res: Response,
     data: unknown,
-    message?: string ,
+    message?: string,
 ) => res.status(200).json({
     success: true,
-    message: message ?? 'Ok' ,
+    message: message ?? 'Ok',
     data
 });
 
@@ -80,9 +80,9 @@ export const notFound = (
 
 // 409
 export const conflict = (
-    res:Response,
-    message:String,
-    data?:unknown
+    res: Response,
+    message: String,
+    data?: unknown
 ) => res.status(409).json({
     success: false,
     message,
@@ -92,9 +92,11 @@ export const conflict = (
 
 // 500
 export const internalServerError = (
-    res:Response,
-    message: "Internal Server Error",
+    res: Response,
+    message: string = "Internal Server Error",
+    data?: unknown
 ) => res.status(500).json({
     success: false,
-    message
+    message,
+    data
 })

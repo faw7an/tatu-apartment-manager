@@ -19,7 +19,7 @@ enum Role {
 }
 
 enum BillStatus {
-  UNPAID
+  UNPAID 
   PAID
   OVERDUE
 }
