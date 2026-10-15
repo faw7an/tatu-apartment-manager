@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { prisma } from "../utils/prisma";
+import { PaymentStatus, BillStatus } from '../generated/prisma/client';
 
 
 
@@ -96,16 +98,160 @@ export async function initiateStkPush(
 export async function processCallback(callbackData: any): Promise<void> {
     const stkCallback = callbackData?.Body?.stkCallback
 
-    if(!stkCallback){
+    if (!stkCallback) {
         console.warn('Callback ignored: no stkCallback in body');
         return;
     }
+
+    const { ResultCode, CheckoutRequestID, ResultDesc } = stkCallback;
+
+    const txn = await prisma.mpesaTxns.findUnique({
+        where: {
+            checkoutRequestId: CheckoutRequestID
+        }
+    });
+
+    if (!txn) {
+        console.log("CheckoutRequestId not found");
+        return
+    }
+
+    if (txn.status !== PaymentStatus.PENDING) return;
+
+    if (ResultCode !== 0) {
+        await prisma.mpesaTxns.update({
+            where: {
+                checkoutRequestId: CheckoutRequestID
+            },
+            data: {
+                status: PaymentStatus.FAILED
+            }
+        });
+        console.log("Failed to complete payment");
+        return;
+    }
     
-    // console.log("RAW CALLBACK:")
-    // console.log(JSON.stringify(callbackData, null, 2)) // full pretty print
-    
+    const mpesaReceiptNumber = stkCallback.CallbackMetadata?.Item?.find((item: any) => item.Name === "MpesaReceiptNumber")?.Value;
+
+    console.log(mpesaReceiptNumber);
+
+
+    const amountPaid = stkCallback.CallbackMetadata?.Item?.find((item: any) => item.Name === "Amount")?.Value;
+
+
+    // if(amountPaid !== txn.amount){
+    //     console.error("Amount mismatch");
+    //     return;
+    // }
+
+
+    const bill = await prisma.bills.findUnique({
+        where: {
+            id: txn.billId
+        },
+        include: {
+            room: true,
+        }
+    });
+
+    if(!bill) {
+        console.log("Bill not found");
+        return;
+    };
+
+    // console.log(bill.room);
+
+    const updateBilling = await prisma.$transaction(async (tx) => {
+        const date = new Date();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const receiptNumber = `RCP-${bill.month.replace('-', '')}-${bill.room.roomNumber}`
+        console.log(receiptNumber);
+
+        const updateTxnStatus = await tx.mpesaTxns.update({
+            where: {
+                checkoutRequestId: CheckoutRequestID
+            },
+            data: {
+                status: PaymentStatus.SUCCESS,
+                resultCode: ResultCode,
+                resultDesc: ResultDesc,
+                mpesaReceiptNumber
+            }
+        });
+
+        const updateBillStatus = await tx.bills.update({
+            where: {
+                id: txn.billId
+            },
+            data: {
+                status: BillStatus.PAID,
+                mpesaCode: mpesaReceiptNumber,
+                paidAt: date,
+            }
+        })
+
+        const receipt = await tx.receipts.create({
+            data: {
+                amountPaid,
+                billId: txn.billId,
+                month:bill.month,
+                mpesaCode: mpesaReceiptNumber,
+                receiptNumber,
+                tenantId: bill.tenantId,
+                paidAt: date
+            }
+        });
+
+    })
+
     console.log("STK CALLBACK:", stkCallback);
 
+    return;
 }
 
 
+// POST /api/payment/callback HTTP/1.1
+// Host: 7bc9-41-90-34-177.ngrok-free.app
+// Accept: */*
+// Businessshortcode: 174379
+// Content-Length: 450
+// Content-Type: application/json;charset=UTF-8
+// User-Agent: ReactorNetty/1.2.9
+// X-Forwarded-For: 196.201.212.69
+// X-Forwarded-Host: 7bc9-41-90-34-177.ngrok-free.app
+// X-Forwarded-Proto: https
+
+// {
+//   "Body": {
+//     "stkCallback": {
+//       "MerchantRequestID": "07e0-40a2-8aa6-a85c104d97cc565441",
+//       "CheckoutRequestID": "ws_CO_061020261110579114307530",
+//       "ResultCode": 0,
+//       "ResultDesc": "The service request is processed successfully.",
+//       "CallbackMetadata": {
+//         "Item": [
+//           {
+//             "Name": "Amount",
+//             "Value": 1.0
+//           },
+//           {
+//             "Name": "MpesaReceiptNumber",
+//             "Value": "UJ63Y9UTN2"
+//           },
+//           {
+//             "Name": "Balance",
+//             "Value": 0.0
+//           },
+//           {
+//             "Name": "TransactionDate",
+//             "Value": 20261006111110
+//           },
+//           {
+//             "Name": "PhoneNumber",
+//             "Value": 254114307530
+//           }
+//         ]
+//       }
+//     }
+//   }
+// }

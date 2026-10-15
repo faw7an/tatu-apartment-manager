@@ -142,7 +142,7 @@ export async function register(req: Request, res: Response): Promise<void> {
 // login
 export async function login(req: Request, res: Response): Promise<void> {
     const { email, password } = req.body;
-
+    
     const user = await prisma.users.findUnique({ where: { email } });
     if (!user) {
         notFound(

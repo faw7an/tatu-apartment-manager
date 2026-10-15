@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { Prisma } from "../generated/prisma/client"
-import { ok, created, unauthorized, forbidden, conflict, badRequest, notFound } from "../utils/response";
+import { ok, created, unauthorized, forbidden, conflict, internalServerError, badRequest, notFound } from "../utils/response";
 
 export function errorHandler(
     err: Error, req: Request, res: Response, next: NextFunction
@@ -8,48 +8,43 @@ export function errorHandler(
     console.error(err);
 
     if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        badRequest(
+        return badRequest(
             res, "Database operation failed"
         );
-        return;
     }
 
     if (err instanceof Prisma.PrismaClientInitializationError) {
-        badRequest(
+        return internalServerError(
             res, 'Service temporarily unavailable'
         );
-        return;
+
     }
 
     // Validation errors
     if (err.name === 'ZodError') {
-        res.status(400).json({
-            success: false,
-            message: 'Validation failed'
-        })
-        return
+        return badRequest(
+            res, 'Validation failed'
+        )
+
     }
 
     // JWT errors
     if (err.name === 'JsonWebTokenError') {
-        res.status(401).json({
-            success: false,
-            message: 'Invalid token'
-        })
-        return
+        return unauthorized(
+            res, 'Invalid token'
+        )
+
     }
 
     if (err.name === 'TokenExpiredError') {
-        res.status(401).json({
-            success: false,
-            message: 'Token expired'
-        })
-        return
+        return unauthorized(
+            res, 'Token expired'
+        )
     }
 
-    res.status(500).json({
-        success: false,
-        message: err.message || 'Internal server'
-    });
+    return internalServerError(
+        res,
+        err.message 
+    );
 }
 

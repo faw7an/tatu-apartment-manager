@@ -9,6 +9,8 @@ export async function stkPush(req: Request, res: Response): Promise<void> {
     try {
         const user = req.user;
         const { billId, phoneNumber } = req.body;
+        const cutoff = new Date();
+        cutoff.setMinutes(cutoff.getMinutes() - 3);
 
 
         if (!billId || !phoneNumber) {
@@ -19,12 +21,10 @@ export async function stkPush(req: Request, res: Response): Promise<void> {
             return;
         }
 
-
-
         const existingBill = await prisma.bills.findUnique({
             where: {
                 id: billId,
-                tenantId: user?.userId
+                tenantId: user?.userId,
             },
             include: {
                 billLineItems: true
@@ -52,28 +52,39 @@ export async function stkPush(req: Request, res: Response): Promise<void> {
 
         const totalBill = billTotal(existingBill);
 
-        // console.log(totalBill);
 
         const pending = await prisma.mpesaTxns.findFirst({
             where: {
                 billId,
-                status: PaymentStatus.PENDING
+                status: PaymentStatus.PENDING,
+                createdAt: {
+                    gte: cutoff
+                }
+            },
+            select: {
+                checkoutRequestId: true
             }
         });
 
+        // turn off for testing
         if (pending) {
             conflict(
-                res, "A payment is already in progress for this bill."
+                res,
+                "A payment is already in progress for this bill.",
+                {
+                    checkoutRequestId: pending.checkoutRequestId
+                }
             );
             return;
         }
 
         const stk = await initiateStkPush(
-            phoneNumber, totalBill, billId, 'string', 'House bill payment',
+            phoneNumber, 1, billId, 'string', 'House bill payment',
         );
 
+
         // console.log(stk);
-        const updateMpesatxn = await prisma.mpesaTxns.create({
+        const mpesatxn = await prisma.mpesaTxns.create({
             data: {
                 billId,
                 checkoutRequestId: stk.checkoutRequestId,
@@ -85,6 +96,7 @@ export async function stkPush(req: Request, res: Response): Promise<void> {
         ok(
             res,
             {
+                mpesatxn,
                 checkoutRequestId: stk.checkoutRequestId
             }
         );
@@ -94,6 +106,46 @@ export async function stkPush(req: Request, res: Response): Promise<void> {
             res, "Could not start payment try again"
         )
     }
+}
+
+export async function getPaymentStatus(req: Request, res: Response): Promise<void> {
+    const user = req.user;
+    const { checkoutRequestId } = req.params as { checkoutRequestId: string };
+
+    if (!checkoutRequestId) {
+        badRequest(
+            res, "checkoutRequestId required"
+        );
+        return;
+    }
+    const txn = await prisma.mpesaTxns.findFirst({ //change to findunique (after checning db schema)
+        where: {
+            checkoutRequestId: checkoutRequestId
+        },
+        include: {
+            bill: true
+        }
+    });
+
+
+    if (!txn) {
+        notFound(res, "Transaction not found");
+        return;
+    }
+
+    if (txn.bill.tenantId !== user?.userId) {
+        notFound(res, "Transaction not found");
+        return;
+    }
+
+    ok(
+        res,
+        {
+            status: txn.status,
+            mpesaReceiptNumber: txn.mpesaReceiptNumber,
+            resultDesc: txn.resultDesc
+        }
+    )
 }
 
 export async function test(req: Request, res: Response): Promise<void> {

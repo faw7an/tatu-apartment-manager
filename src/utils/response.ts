@@ -4,7 +4,7 @@ import type { Response } from 'express';
 // 200
 export const ok = (
     res: Response,
-    data: unknown,
+        data: unknown,
     message?: string,
 ) => res.status(200).json({
     success: true,

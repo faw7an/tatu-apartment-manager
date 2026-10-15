@@ -10,9 +10,11 @@ import * as payment from '../controller/payment.controller';
 const router = Router();
 
 
-router.post('/payment/stk-push', verifyJwt, payment.stkPush); //  requireRole(Role.TENANT)
-router.post('/payment/test', verifyJwt, payment.test);
+router.post('/payment/stk-push', verifyJwt,requireRole(Role.TENANT), payment.stkPush); 
+router.get('/payment/status/:checkoutRequestId', verifyJwt,requireRole(Role.TENANT), payment.getPaymentStatus); 
 router.post('/payment/callback', payment.callback)
+
+router.post('/payment/test', verifyJwt, payment.test);
 
 
 
